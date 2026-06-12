@@ -1,0 +1,225 @@
+#!/bin/bash
+# ~/.config/hypr/scripts/wofi-power-menu.sh
+
+# Theme untuk wofi
+WOFI_STYLE=$(cat << EOF
+#wofi {
+    border-radius: 12px;
+    border: 2px solid #cba6f7;
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+}
+#entry {
+    padding: 10px;
+    border-radius: 8px;
+}
+#list {
+    padding: 10px;
+}
+EOF
+)
+
+# Tampilan utama
+MAIN_MENU() {
+    echo -e "  Shutdown\n  Restart\n󰍃  Logout\n󰌾  Lock\n󰜺  Suspend\n󰖔  Cancel" | \
+    wofi --dmenu \
+        --prompt "⚙️  System Menu" \
+        --width 280 \
+        --height 250 \
+        --location center \
+        --hide-scroll \
+        --style "$WOFI_STYLE" \
+        --normal-window
+}
+
+# Tampilan konfirmasi
+CONFIRM_MENU() {
+    local action=$1
+    echo -e "✅  Yes\n❌  No" | \
+    wofi --dmenu \
+        --prompt "⚠️  $action?" \
+        --width 220 \
+        --height 120 \
+        --location center \
+        --hide-scroll \
+        --style "$WOFI_STYLE" \
+        --normal-window
+}
+
+# ===== MAIN SCRIPT =====
+
+# Tampilkan menu utama
+CHOICE=$(MAIN_MENU)
+
+# Proses pilihan
+case $CHOICE in
+    "  Shutdown")
+        CONFIRM=$(CONFIRM_MENU "Shutdown system")
+        [ "$CONFIRM" = "✅  Yes" ] && systemctl poweroff
+        ;;
+    
+    "  Restart")
+        CONFIRM=$(CONFIRM_MENU "Restart system")
+        [ "$CONFIRM" = "✅  Yes" ] && systemctl reboot
+        ;;
+    
+    "󰍃  Logout")
+        CONFIRM=$(CONFIRM_MENU "Logout from session")
+        [ "$CONFIRM" = "✅  Yes" ] && hyprctl dispatch exit
+        ;;
+    
+    "󰌾  Lock")
+        # Lock screen biasanya tidak perlu konfirmasi
+        swaylock
+        ;;
+    
+    "󰜺  Suspend")
+        CONFIRM=$(CONFIRM_MENU "Suspend system")
+        [ "$CONFIRM" = "✅  Yes" ] && systemctl suspend
+        ;;
+    
+    *)
+        # Cancel atau pilihan tidak dikenal
+        exit 0
+        ;;
+esac#!/bin/bash
+# ~/.config/hypr/scripts/wofi-power-menu.sh
+
+# Theme untuk wofi
+WOFI_STYLE=$(cat << EOF
+#wofi {
+    border-radius: 12px;
+    border: 2px solid #cba6f7;
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+}
+#entry {
+    padding: 10px;
+    border-radius: 8px;
+}
+#list {
+    padding: 10px;
+}
+EOF
+)
+
+# Tampilan utama
+MAIN_MENU() {
+    echo -e "  Shutdown\n  Restart\n󰍃  Logout\n󰌾  Lock\n󰜺  Suspend\n󰖔  Cancel" | \
+    wofi --dmenu \
+        --prompt "⚙️  System Menu" \
+        --width 280 \
+        --height 250 \
+        --location center \
+        --hide-scroll \
+        --style "$WOFI_STYLE" \
+        --normal-window
+}
+
+# Tampilan konfirmasi
+CONFIRM_MENU() {
+    local action=$1
+    echo -e "✅  Yes\n❌  No" | \
+    wofi --dmenu \
+        --prompt "⚠️  $action?" \
+        --width 220 \
+        --height 120 \
+        --location center \
+        --hide-scroll \
+        --style "$WOFI_STYLE" \
+        --normal-window
+}
+
+# Main script
+CHOICE=$(MAIN_MENU)
+
+case $CHOICE in
+    "  Shutdown")
+        CONFIRM=$(CONFIRM_MENU "Shutdown system")
+        [ "$CONFIRM" = "✅  Yes" ] && systemctl poweroff
+        ;;
+    "  Restart")
+        CONFIRM=$(CONFIRM_MENU "Restart system")
+        [ "$CONFIRM" = "✅  Yes" ] && systemctl reboot
+        ;;
+    "󰍃  Logout")
+        CONFIRM=$(CONFIRM_MENU "Logout from session")
+        [ "$CONFIRM" = "✅  Yes" ] && hyprctl dispatch exit
+        ;;
+    "󰌾  Lock")
+        CONFIRM=$(CONFIRM_MENU "Lock screen")
+        [ "$CONFIRM" = "✅  Yes" ] && swaylock
+        ;;
+    "󰜺  Suspend")
+        CONFIRM=$(CONFIRM_MENU "Suspend system")
+        [ "$CONFIRM" = "✅  Yes" ] && systemctl suspend
+        ;;
+    *)
+        exit 0
+        ;;
+esac#!/bin/bash
+
+CHOICE=$(echo -e "Restart\nShutdown\nLogout" | rofi -dmenu -p "Pilih:")
+
+case $CHOICE in
+    "Restart")
+        systemctl reboot
+        ;;
+    "Shutdown")
+        systemctl poweroff
+        ;;
+    "Logout")
+        hyprctl dispatch exit
+        ;;
+    *)
+        echo "Batal"
+        ;;
+esac
+#!/bin/bash
+
+# Tunggu sebentar agar keyboard grab berhasil
+sleep 0.1
+
+CHOICE=$(echo -e "Restart\nShutdown\nLogout" | rofi -dmenu -p "Pilih:" -lines 3 -width 20% -location 0 -yoffset 50)
+
+case $CHOICE in
+    "Restart")
+        systemctl reboot
+        ;;
+    "Shutdown")
+        systemctl poweroff
+        ;;
+    "Logout")
+        hyprctl dispatch exit
+        ;;
+    *)
+        echo "Batal"
+        ;;
+esac
+#!/bin/bash
+
+CHOICE=$(echo -e "Restart\nShutdown\nLogout" | rofi -dmenu \
+  -p "Menu:" \
+  -lines 3 \
+  -width 15% \          # Lebih kecil, coba 15-25%
+  -location 2 \         # 0=center, 1=north, 2=south, dll
+  -yoffset -50 \        # Naikkan sedikit dari bawah
+  -xoffset 0 \
+  -theme-str 'window {border-radius: 8px; padding: 5px;} listview {lines: 3;}' \
+  -theme-str 'element {padding: 4px 8px;}' \
+  -theme-str 'element-text {font: "Inter 11";}')
+
+case $CHOICE in
+    "Restart")
+        systemctl reboot
+        ;;
+    "Shutdown")
+        systemctl poweroff
+        ;;
+    "Logout")
+        hyprctl dispatch exit
+        ;;
+    *)
+        exit 0
+        ;;
+esac
