@@ -1,165 +1,239 @@
-# 🚀 Installation Guide
+#!/bin/bash
 
-This guide explains how to install **Debian Hyprland Dotfiles v2** on a fresh or existing Debian (apt-based) system.
+# /* ---- 💫 https://github.com/Akashio28 💫 ---- */
+# Akashio's Debian Hyprland Dotfiles v2 - Install Script
 
----
+clear
 
-## 1. Prerequisites
+# Colors
+OK="$(tput setaf 2)[OK]$(tput sgr0)"
+ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
+NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
+INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
+WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
+CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
+MAGENTA="$(tput setaf 5)"
+YELLOW="$(tput setaf 3)"
+GREEN="$(tput setaf 2)"
+BLUE="$(tput setaf 4)"
+SKY_BLUE="$(tput setaf 6)"
+RESET="$(tput sgr0)"
 
-- A Debian-based system (Debian 13 "Trixie" or later recommended) with `apt` available
-- A regular user account with `sudo` privileges
-- `git` installed (`sudo apt install -y git`)
-- Hyprland `v0.55.x` compatible system (see note below if you're on an older version)
+# Banner
+printf "\n"
+echo -e "\e[35m"
+cat << "EOF"
+    ___    __            __    _     
+   /   |  / /______ _  / /_  (_)___ 
+  / /| | / //_/ __ `/ / __ \/ / __ \
+ / ___ |/ ,< / /_/ / / / / / / /_/ /
+/_/  |_/_/|_|\__,_/ /_/ /_/_/\____/ 
+                                     
+  Debian Hyprland Dotfiles v2
+  https://github.com/Akashio28/Debian_Hyprland_dotfilesv2
+EOF
+echo -e "\e[0m"
+printf "\n"
 
-> [!CAUTION]
-> Do **NOT** run `install.sh` as `root` or with `sudo`. The script will call `sudo` itself when needed.
+# Check if running as root
+if [[ $EUID -eq 0 ]]; then
+    echo "${ERROR} Do NOT run this script as root or with sudo!" 
+    echo "${NOTE} Run as a normal user. The script will call sudo when needed."
+    exit 1
+fi
 
-> [!TIP]
-> It's recommended to back up your system (e.g. with `timeshift` or `snapper`) before making major desktop environment changes.
+# Check if running on Debian/apt-based
+if ! command -v apt &>/dev/null; then
+    echo "${ERROR} This script only supports Debian-based systems (apt required)."
+    exit 1
+fi
 
----
+# Confirm to proceed
+echo "${NOTE} This script will:"
+echo "  1. Update your system"
+echo "  2. Install Hyprland & all required packages"
+echo "  3. Backup your existing configs (if any)"
+echo "  4. Copy dotfiles to ~/.config"
+echo "  5. Install hyprpm plugins"
+printf "\n"
+read -rp "${CAT} Do you want to continue? [y/N]: " confirm
+case "$confirm" in
+    [yY][eE][sS]|[yY]) 
+        echo "${OK} Starting installation..."
+        ;;
+    *)
+        echo "${NOTE} Installation cancelled. Goodbye!"
+        exit 0
+        ;;
+esac
 
-## 2. Clone the Repository
+# Create log directory
+mkdir -p Install-Logs
+LOG="Install-Logs/install-$(date +%d-%H%M%S).log"
 
-```bash
-git clone https://github.com/Akashio28/Debian_Hyprland_dotfilesv2.git ~/Debian_Hyprland_dotfilesv2
-cd ~/Debian_Hyprland_dotfilesv2
-```
+printf "\n"
+echo "${INFO} Log file: $LOG"
+printf "\n"
 
----
+# ─────────────────────────────────────────────
+# 1. System Update
+# ─────────────────────────────────────────────
+echo "${INFO} Updating system..." | tee -a "$LOG"
+sudo apt update && sudo apt upgrade -y 2>&1 | tee -a "$LOG"
+echo "${OK} System updated." | tee -a "$LOG"
+printf "\n"
 
-## 3. Run the Installer
+# ─────────────────────────────────────────────
+# 2. Install Required Packages
+# ─────────────────────────────────────────────
+echo "${INFO} Installing required packages..." | tee -a "$LOG"
 
-```bash
-chmod +x install.sh
-./install.sh
-```
+PACKAGES=(
+    # Core
+    hyprland
+    hyprlock
+    hypridle
+    waybar
+    rofi
+    swaync
+    kitty
+    thunar
+    swww
+    # Fonts
+    fonts-noto
+    fonts-noto-color-emoji
+    fonts-jetbrains-mono
+    # Tools
+    wlogout
+    wofi
+    tofi
+    btop
+    cava
+    fastfetch
+    grim
+    slurp
+    swappy
+    wl-clipboard
+    cliphist
+    brightnessctl
+    pamixer
+    playerctl
+    network-manager
+    nm-applet
+    blueman
+    polkit-kde-agent-1
+    xdg-desktop-portal-hyprland
+    xdg-utils
+    qt5ct
+    qt6ct
+    nwg-look
+    # Wallpaper
+    wallust
+)
 
-### What the script does, step by step
+for pkg in "${PACKAGES[@]}"; do
+    if ! dpkg -l | grep -q "^ii.*$pkg"; then
+        echo "${INFO} Installing $pkg..." | tee -a "$LOG"
+        sudo apt install -y "$pkg" 2>&1 | tee -a "$LOG" || echo "${WARN} Failed to install $pkg (may not be in repo)" | tee -a "$LOG"
+    else
+        echo "${OK} $pkg already installed." | tee -a "$LOG"
+    fi
+done
 
-1. **Pre-flight checks**
-   - Refuses to run as root
-   - Confirms `apt` is available (Debian/Ubuntu only)
+printf "\n"
+echo "${OK} Packages installed." | tee -a "$LOG"
 
-2. **System update**
-   - Runs `sudo apt update`
+# ─────────────────────────────────────────────
+# 3. Backup Existing Configs
+# ─────────────────────────────────────────────
+BACKUP_DIR="$HOME/.config-backup-$(date +%Y%m%d-%H%M%S)"
+CONFIG_DIRS=(hypr waybar rofi kitty swaync wlogout wofi tofi btop cava wallust nwg-look)
 
-3. **Install Hyprland & core dependencies**
-   - Installs Hyprland, Waybar, rofi, swaync, swww, kitty, thunar, and other core packages via `apt`
+echo "${INFO} Checking for existing configs to backup..." | tee -a "$LOG"
 
-4. **Install hyprpm plugin build dependencies**
-   - Installs the dev libraries needed to build/enable Hyprland plugins
+for dir in "${CONFIG_DIRS[@]}"; do
+    if [ -d "$HOME/.config/$dir" ]; then
+        mkdir -p "$BACKUP_DIR"
+        mv "$HOME/.config/$dir" "$BACKUP_DIR/$dir"
+        echo "${NOTE} Backed up ~/.config/$dir → $BACKUP_DIR/$dir" | tee -a "$LOG"
+    fi
+done
 
-5. **Backup existing configs**
-   - If `~/.config/hypr` already exists, it's moved to `~/.config-backup-<timestamp>/hypr`
-   - Existing configs for `waybar`, `rofi`, `swaync`, `kitty`, `wlogout`, `wallust` are backed up the same way
+if [ -d "$BACKUP_DIR" ]; then
+    echo "${OK} Old configs backed up to: $BACKUP_DIR" | tee -a "$LOG"
+else
+    echo "${OK} No existing configs found. Skipping backup." | tee -a "$LOG"
+fi
 
-6. **Copy dotfiles**
-   - Copies `hypr/` (and any other managed app config folders present in the repo) into `~/.config`
-   - Makes scripts in `scripts/`, `UserScripts/`, and `initial-boot.sh` executable
+printf "\n"
 
-7. **Install & enable plugins via hyprpm**
-   - `hyprgrass` for touchscreen/trackpad gestures
-   - `hyprexpo+` (community fork) for workspace overview
+# ─────────────────────────────────────────────
+# 4. Copy Dotfiles
+# ─────────────────────────────────────────────
+echo "${INFO} Copying dotfiles to ~/.config..." | tee -a "$LOG"
 
-8. **Done**
-   - Prints next steps and the location of your backed-up configs
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
----
+for dir in "${CONFIG_DIRS[@]}"; do
+    if [ -d "$SCRIPT_DIR/$dir" ]; then
+        cp -r "$SCRIPT_DIR/$dir" "$HOME/.config/"
+        echo "${OK} Copied $dir" | tee -a "$LOG"
+    else
+        echo "${WARN} $dir not found in repo, skipping..." | tee -a "$LOG"
+    fi
+done
 
-## 4. After Installation
+# Make scripts executable
+find "$HOME/.config/hypr" -name "*.sh" -exec chmod +x {} \; 2>/dev/null
+echo "${OK} Scripts made executable." | tee -a "$LOG"
 
-1. **Log out / reboot**, then select **Hyprland** from your display manager (or launch it manually).
-2. Check for config errors:
-   ```bash
-   hyprctl reload
-   ```
-3. Open the keybind cheat sheet:
-   ```
-   SUPER + H
-   ```
+printf "\n"
 
----
+# ─────────────────────────────────────────────
+# 5. Install hyprpm plugins
+# ─────────────────────────────────────────────
+echo "${INFO} Setting up hyprpm plugins..." | tee -a "$LOG"
 
-## 5. Manual / Partial Installation
+if command -v hyprpm &>/dev/null; then
+    hyprpm update 2>&1 | tee -a "$LOG"
+    hyprpm reload -n 2>&1 | tee -a "$LOG"
+    echo "${OK} hyprpm plugins configured." | tee -a "$LOG"
+else
+    echo "${WARN} hyprpm not found. Skipping plugin setup." | tee -a "$LOG"
+fi
 
-If you only want specific parts of this setup:
+printf "\n"
 
-### Just the Hyprland config
+# ─────────────────────────────────────────────
+# Done!
+# ─────────────────────────────────────────────
+echo -e "${GREEN}"
+cat << "EOF"
+╔══════════════════════════════════════════╗
+║   Installation Complete! 🎉              ║
+║                                          ║
+║   Next steps:                            ║
+║   1. Reboot your system                  ║
+║   2. Select Hyprland from login manager  ║
+║   3. Press SUPER + H for keybind help    ║
+╚══════════════════════════════════════════╝
+EOF
+echo -e "${RESET}"
 
-```bash
-cp -r hypr ~/.config/hypr
-```
+if [ -d "$BACKUP_DIR" ]; then
+    echo "${NOTE} Your old configs were backed up to: $BACKUP_DIR"
+fi
 
-### Just a specific app config
+echo "${NOTE} Install log saved to: $LOG"
+printf "\n"
 
-```bash
-cp -r waybar ~/.config/waybar    # example
-```
-
-### Plugins only
-
-```bash
-hyprpm update
-hyprpm add https://github.com/horriblename/hyprgrass
-hyprpm add https://github.com/sandwichfarm/hyprexpo
-hyprpm enable hyprgrass
-hyprpm enable hyprexpo
-hyprpm reload -n
-```
-
----
-
-## 6. Troubleshooting
-
-### A package fails to install via `apt`
-
-Some packages (e.g. `swww`, `hyprpicker`) may not be available in your distro's default repos depending on your release. If `apt` fails on a specific package:
-
-- Install it manually / build from source, then re-run `./install.sh` — it's safe to re-run.
-
-### `hyprpm` commands fail
-
-- Run `hyprpm update` first, then retry `hyprpm add ...`
-- Make sure the plugin build dependencies from step 4 above were installed successfully
-
-### Hyprland doesn't start / returns to login manager
-
-- Confirm you're running Hyprland `v0.55.x`. Older versions may not be compatible with this config — see [`CHANGELOG.md`](CHANGELOG.md) for breaking changes that were patched.
-- Check `~/.config/hypr/UserConfigs/ENVariables.conf` for GPU-related environment variables if you have issues with rendering (especially NVIDIA).
-
-### I want to restore my old config
-
-Your previous config was backed up to:
-
-```
-~/.config-backup-<timestamp>/
-```
-
-Move it back into place, e.g.:
-
-```bash
-rm -rf ~/.config/hypr
-mv ~/.config-backup-<timestamp>/hypr ~/.config/hypr
-```
-
----
-
-## 7. Updating
-
-To pull the latest dotfiles:
-
-```bash
-cd ~/Debian_Hyprland_dotfilesv2
-git pull
-./install.sh
-```
-
-The script will back up your current config again before copying the new one, so nothing is lost.
-
-To update plugins after a Hyprland update:
-
-```bash
-hyprpm update
-hyprpm reload -n
-```
+read -rp "${CAT} Would you like to reboot now? [y/N]: " reboot_confirm
+case "$reboot_confirm" in
+    [yY][eE][sS]|[yY])
+        echo "${INFO} Rebooting..."
+        systemctl reboot
+        ;;
+    *)
+        echo "${OK} Done! Please reboot manually when ready."
+        ;;
+esac
